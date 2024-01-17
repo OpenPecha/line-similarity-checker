@@ -83,7 +83,7 @@ class DatasetsReader:
         self, threshold: float, keep_the_files: bool = True
     ):
         report_data = self.generate_similarity_report()
-        filtered_data = report_data[report_data["Similarity_Score"] > threshold]
+        filtered_data = report_data[report_data["Similarity_Score"] >= threshold]
 
         if not keep_the_files:
             deleted_files = set()
