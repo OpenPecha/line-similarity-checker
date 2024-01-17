@@ -67,18 +67,39 @@ class DatasetsReader:
                         score = check_line_similarity(text, other_text, normalized=True)
                         report_data.append(
                             {
-                                "Dataset Name": dataset_name,
-                                "Text File 1": file_name,
-                                "Dataset Name 2": other_dataset_name,
-                                "Text File 2": other_file_name,
-                                "Similarity Score": score,
+                                "Dataset_Name": dataset_name,
+                                "Text_File_1": file_name,
+                                "Dataset_Name_2": other_dataset_name,
+                                "Text_File_2": other_file_name,
+                                "Similarity_Score": score,
                             }
                         )
 
         return pd.DataFrame(report_data)
 
+    def filter_by_similarity_threshold(self, threshold: float):
+        report_data = self.generate_similarity_report()
+
+        # List to store pairs of files exceeding the threshold
+        files_pairs_exceeding_threshold = []
+
+        # Iterate through the report data
+        for entry in report_data.itertuples():
+            if entry.Similarity_Score > threshold:
+                file_pair = {
+                    "Dataset_Name": entry.Dataset_Name,
+                    "Text_File_1": entry.Text_File_1,
+                    "Dataset_Name_2": entry.Dataset_Name_2,
+                    "Text_File_2": entry.Text_File_2,
+                    "Similarity_Score": entry.Similarity_Score,
+                }
+                files_pairs_exceeding_threshold.append(file_pair)
+
+        return pd.DataFrame(files_pairs_exceeding_threshold)
+
 
 if __name__ == "__main__":
     data_sets = DatasetsReader(Path(DOWNLOADS_DIR))
-    report = data_sets.generate_similarity_report()
-    report.to_csv("similarity_report.csv", index=False)
+    threshold = 0.4  # Example threshold
+    filtered_report = data_sets.filter_by_similarity_threshold(threshold)
+    print(filtered_report)

@@ -10,12 +10,9 @@ def test_report_generator():
 
     assert isinstance(report, DataFrame)
     assert set(report.columns.tolist()) == {
-        "Text File 2",
-        "Similarity Score",
-        "Dataset Name",
-        "Dataset Name 2",
-        "Text File 1",
+        "Text_File_2",
+        "Similarity_Score",
+        "Dataset_Name",
+        "Dataset_Name_2",
+        "Text_File_1",
     }
-
-
-test_report_generator()
