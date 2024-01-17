@@ -79,23 +79,7 @@ class DatasetsReader:
 
     def filter_by_similarity_threshold(self, threshold: float):
         report_data = self.generate_similarity_report()
-
-        # List to store pairs of files exceeding the threshold
-        files_pairs_exceeding_threshold = []
-
-        # Iterate through the report data
-        for entry in report_data.itertuples():
-            if entry.Similarity_Score > threshold:
-                file_pair = {
-                    "Dataset_Name": entry.Dataset_Name,
-                    "Text_File_1": entry.Text_File_1,
-                    "Dataset_Name_2": entry.Dataset_Name_2,
-                    "Text_File_2": entry.Text_File_2,
-                    "Similarity_Score": entry.Similarity_Score,
-                }
-                files_pairs_exceeding_threshold.append(file_pair)
-
-        return pd.DataFrame(files_pairs_exceeding_threshold)
+        return report_data[report_data["Similarity_Score"] > threshold]
 
 
 if __name__ == "__main__":
