@@ -20,6 +20,7 @@ classifiers = [
 
 dependencies = [
   "fastDamerauLevenshtein >= 1.0.7",
+  "pandas >= 2.1.4",
 ]
 
 [project.optional-dependencies]
