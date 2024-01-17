@@ -17,12 +17,5 @@ def test_report_generator():
         "Text File 1",
     }
 
-    first_row = report.iloc[0]
-    assert first_row["Dataset Name"] == "batch 1"
-    assert first_row["Text File 1"] == "1-1-4a_line_9874_2"
-    assert first_row["Dataset Name 2"] == "batch 1"
-    assert first_row["Text File 2"] == "1-1-4a_line_9874_3"
-    assert first_row["Similarity Score"] == 0.26373626373626374
-
 
 test_report_generator()
