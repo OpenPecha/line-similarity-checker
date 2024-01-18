@@ -56,26 +56,30 @@ class DatasetsReader:
 
     def generate_similarity_report(self):
         report_data = []
-
+        distinct_files = []
         for dataset_name, dataset in self.Datasets.items():
             for file_name, text in dataset.text_files.items():
-                for other_dataset_name, other_dataset in self.Datasets.items():
-                    for other_file_name, other_text in other_dataset.text_files.items():
-                        if (
-                            dataset_name == other_dataset_name
-                            and file_name == other_file_name
-                        ):
-                            continue  # Skip comparing the file with itself
-                        score = check_line_similarity(text, other_text, normalized=True)
-                        report_data.append(
-                            {
-                                "Dataset_Name": dataset_name,
-                                "Text_File_1": file_name,
-                                "Dataset_Name_2": other_dataset_name,
-                                "Text_File_2": other_file_name,
-                                "Similarity_Score": score,
-                            }
-                        )
+                distinct_files.append(
+                    {"dataset_name": dataset_name, "file_name": file_name, "text": text}
+                )
+
+        for i in range(len(distinct_files)):
+            for j in range(i + 1, len(distinct_files)):
+                file = distinct_files[i]
+                other_file = distinct_files[j]
+
+                score = check_line_similarity(
+                    file["text"], other_file["text"], normalized=True
+                )
+                report_data.append(
+                    {
+                        "Dataset_Name": file["dataset_name"],
+                        "Text_File_1": file["file_name"],
+                        "Dataset_Name_2": other_file["dataset_name"],
+                        "Text_File_2": other_file["file_name"],
+                        "Similarity_Score": score,
+                    }
+                )
 
         return pd.DataFrame(report_data)
 
@@ -121,8 +125,5 @@ class DatasetsReader:
 
 if __name__ == "__main__":
     data_sets = DatasetsReader(Path(DOWNLOADS_DIR))
-    threshold = 0.4  # Example threshold
-    filtered_report = data_sets.filter_by_similarity_threshold(
-        threshold, keep_the_files=True
-    )
-    print(filtered_report)
+    report = data_sets.generate_similarity_report()
+    report.to_csv("report.csv", index=False)
