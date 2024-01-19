@@ -56,41 +56,37 @@ class DatasetsReader:
     def get_dataset(self, dataset_name: str) -> DataSet:
         return self.Datasets[dataset_name]
 
-    def worker_similarity_check(
-        self,
-        dataset_name,
-        text_file,
-        other_dataset_name,
-        other_text_file,
-        file_content,
-        other_file_content,
-    ):
-        score = check_line_similarity(file_content, other_file_content)
+    def worker_similarity_check(self, dataset: Dict, other_dataset: Dict):
+        score = check_line_similarity(
+            dataset["file_content"], other_dataset["file_content"]
+        )
         return {
-            "Dataset_Name": dataset_name,
-            "Text_File_1": text_file,
-            "Dataset_Name_2": other_dataset_name,
-            "Text_File_2": other_text_file,
+            "Dataset_Name": dataset["dataset_name"],
+            "Text_File_1": dataset["file_name"],
+            "Dataset_Name_2": other_dataset["dataset_name"],
+            "Text_File_2": other_dataset["file_name"],
             "Similarity_Score": score,
         }
 
-    def generate_similarity_in_dataset(self, dataset_name: str, dataset: DataSet):
+    def generate_similarity_in_dataset(self, dataset_name: str):
         tasks = []
+        dataset = self.Datasets[dataset_name]
         text_files = dataset.text_files
         for idx in range(len(text_files)):
             text_file = list(text_files.keys())[idx]
             for j in range(idx + 1, len(text_files)):
                 other_text_file = list(text_files.keys())[j]
-                tasks.append(
-                    (
-                        dataset_name,
-                        text_file,
-                        dataset_name,
-                        other_text_file,
-                        text_files[text_file],
-                        text_files[other_text_file],
-                    )
-                )
+                data_set = {
+                    "dataset_name": dataset_name,
+                    "file_name": text_file,
+                    "file_content": text_files[text_file],
+                }
+                other_dataset = {
+                    "dataset_name": dataset_name,
+                    "file_name": other_text_file,
+                    "file_content": text_files[other_text_file],
+                }
+                tasks.append((data_set, other_dataset))
 
         num_processes = multiprocessing.cpu_count()
         with multiprocessing.Pool(num_processes) as pool:
@@ -101,35 +97,35 @@ class DatasetsReader:
         res = []
         dataset_names = list(self.Datasets.keys())
         for dataset_name in dataset_names:
-            dataset = self.Datasets[dataset_name]
-            res.extend(self.generate_similarity_in_dataset(dataset_name, dataset))
+            res.extend(self.generate_similarity_in_dataset(dataset_name))
         return res
 
     def generate_similarity_across_datasets(self):
-        res = []
         dataset_names = list(self.Datasets.keys())
+        tasks = []
         for i in range(len(dataset_names)):
-            dataset = dataset_names[i]
-            text_files = self.Datasets[dataset].text_files
+            dataset_name = dataset_names[i]
+            text_files = self.Datasets[dataset_name].text_files
             for j in range(i + 1, len(dataset_names)):
-                other_dataset = dataset_names[j]
-                other_text_files = self.Datasets[other_dataset].text_files
-
+                other_dataset_name = dataset_names[j]
+                other_text_files = self.Datasets[other_dataset_name].text_files
                 for text_file in text_files:
                     for other_text_file in other_text_files:
-                        score = check_line_similarity(
-                            text_files[text_file], other_text_files[other_text_file]
-                        )
-                        res.append(
-                            {
-                                "Dataset_Name": dataset,
-                                "Text_File_1": text_file,
-                                "Dataset_Name_2": other_dataset,
-                                "Text_File_2": other_text_file,
-                                "Similarity_Score": score,
-                            }
-                        )
-        return res
+                        dataset = {
+                            "dataset_name": dataset_name,
+                            "file_name": text_file,
+                            "file_content": text_files[text_file],
+                        }
+                        other_dataset = {
+                            "dataset_name": other_dataset_name,
+                            "file_name": other_text_file,
+                            "file_content": other_text_files[other_text_file],
+                        }
+                        tasks.append((dataset, other_dataset))
+        num_processes = multiprocessing.cpu_count()
+        with multiprocessing.Pool(num_processes) as pool:
+            results = pool.starmap(self.worker_similarity_check, tasks)
+        return results
 
     def generate_similarity_report(self):
         report_data = []
