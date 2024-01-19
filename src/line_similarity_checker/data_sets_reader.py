@@ -1,10 +1,11 @@
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
 
 import pandas as pd
 
-from line_similarity_checker.config import DOWNLOADS_DIR
+from line_similarity_checker.config import DOWNLOADS_DIR, ROOT_DIR
 from line_similarity_checker.similarity_checker import check_line_similarity
 
 
@@ -54,33 +55,68 @@ class DatasetsReader:
     def get_dataset(self, dataset_name: str) -> DataSet:
         return self.Datasets[dataset_name]
 
-    def generate_similarity_report(self):
-        report_data = []
-        distinct_files = []
-        for dataset_name, dataset in self.Datasets.items():
-            for file_name, text in dataset.text_files.items():
-                distinct_files.append(
-                    {"dataset_name": dataset_name, "file_name": file_name, "text": text}
-                )
-
-        for i in range(len(distinct_files)):
-            for j in range(i + 1, len(distinct_files)):
-                file = distinct_files[i]
-                other_file = distinct_files[j]
-
+    def generate_similarity_in_dataset(self, dataset_name: str, dataset: DataSet):
+        res = []
+        text_files = dataset.text_files
+        for idx in range(len(text_files)):
+            text_file = list(text_files.keys())[idx]
+            for j in range(idx + 1, len(text_files)):
+                other_text_file = list(text_files.keys())[j]
                 score = check_line_similarity(
-                    file["text"], other_file["text"], normalized=True
+                    text_files[text_file], text_files[other_text_file]
                 )
-                report_data.append(
+                res.append(
                     {
-                        "Dataset_Name": file["dataset_name"],
-                        "Text_File_1": file["file_name"],
-                        "Dataset_Name_2": other_file["dataset_name"],
-                        "Text_File_2": other_file["file_name"],
+                        "Dataset_Name": dataset_name,
+                        "Text_File_1": text_file,
+                        "Dataset_Name_2": dataset_name,
+                        "Text_File_2": other_text_file,
                         "Similarity_Score": score,
                     }
                 )
 
+        return res
+
+    def generate_similarity_within_datasets(self):
+        res = []
+        dataset_names = list(self.Datasets.keys())
+        for dataset_name in dataset_names:
+            dataset = self.Datasets[dataset_name]
+            res.extend(self.generate_similarity_in_dataset(dataset_name, dataset))
+        return res
+
+    def generate_similarity_across_datasets(self):
+        res = []
+        dataset_names = list(self.Datasets.keys())
+        for i in range(len(dataset_names)):
+            dataset = dataset_names[i]
+            text_files = self.Datasets[dataset].text_files
+            for j in range(i + 1, len(dataset_names)):
+                other_dataset = dataset_names[j]
+                other_text_files = self.Datasets[other_dataset].text_files
+
+                for text_file in text_files:
+                    for other_text_file in other_text_files:
+                        score = check_line_similarity(
+                            text_files[text_file], other_text_files[other_text_file]
+                        )
+                        res.append(
+                            {
+                                "Dataset_Name": dataset,
+                                "Text_File_1": text_file,
+                                "Dataset_Name_2": other_dataset,
+                                "Text_File_2": other_text_file,
+                                "Similarity_Score": score,
+                            }
+                        )
+        return res
+
+    def generate_similarity_report(self):
+        report_data = []
+        """line similarity within dataset"""
+        report_data.extend(self.generate_similarity_within_datasets())
+        """line similarity between datasets"""
+        report_data.extend(self.generate_similarity_across_datasets())
         return pd.DataFrame(report_data)
 
     def filter_by_similarity_threshold(
@@ -124,6 +160,10 @@ class DatasetsReader:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+    data_sets = DatasetsReader(Path(ROOT_DIR / "LARGE_DATA" / "1000files"))
     data_sets = DatasetsReader(Path(DOWNLOADS_DIR))
     report = data_sets.generate_similarity_report()
+    end_time = time.time()
+    print(f"Time taken: {end_time - start_time} seconds")
     report.to_csv("report.csv", index=False)
