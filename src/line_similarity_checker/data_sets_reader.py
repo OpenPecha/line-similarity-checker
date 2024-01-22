@@ -6,7 +6,7 @@ from typing import Dict
 
 import pandas as pd
 
-from line_similarity_checker.config import DOWNLOADS_DIR
+from line_similarity_checker.config import DOWNLOADS_DIR  # noqa
 from line_similarity_checker.similarity_checker import check_line_similarity
 
 
@@ -91,25 +91,25 @@ class DatasetsReader:
         num_processes = multiprocessing.cpu_count()
         with multiprocessing.Pool(num_processes) as pool:
             results = pool.starmap(self.worker_similarity_check, tasks)
-        return results
+        """writing results to csv with dataset name"""
+        pd.DataFrame(results).to_csv(f"{dataset_name}.csv", index=False)
 
     def generate_similarity_within_datasets(self):
-        res = []
         dataset_names = list(self.Datasets.keys())
         for dataset_name in dataset_names:
-            res.extend(self.generate_similarity_in_dataset(dataset_name))
-        return res
+            self.generate_similarity_in_dataset(dataset_name)
 
     def generate_similarity_across_datasets(self):
         dataset_names = list(self.Datasets.keys())
-        tasks = []
         for i in range(len(dataset_names)):
             dataset_name = dataset_names[i]
             text_files = self.Datasets[dataset_name].text_files
-            for j in range(i + 1, len(dataset_names)):
-                other_dataset_name = dataset_names[j]
-                other_text_files = self.Datasets[other_dataset_name].text_files
-                for text_file in text_files:
+            for text_file in text_files:
+                tasks = []
+                results = []
+                for j in range(i + 1, len(dataset_names)):
+                    other_dataset_name = dataset_names[j]
+                    other_text_files = self.Datasets[other_dataset_name].text_files
                     for other_text_file in other_text_files:
                         dataset = {
                             "dataset_name": dataset_name,
@@ -122,23 +122,28 @@ class DatasetsReader:
                             "file_content": other_text_files[other_text_file],
                         }
                         tasks.append((dataset, other_dataset))
-        num_processes = multiprocessing.cpu_count()
-        with multiprocessing.Pool(num_processes) as pool:
-            results = pool.starmap(self.worker_similarity_check, tasks)
-        return results
+
+                # Processing the tasks with multiprocessing
+                num_processes = multiprocessing.cpu_count()
+                with multiprocessing.Pool(num_processes) as pool:
+                    results.extend(pool.starmap(self.worker_similarity_check, tasks))
+
+                # Writing results to CSV file
+                if results:
+                    output_file_name = f"{dataset_name}_{text_file}_vs_others.csv"
+                    pd.DataFrame(results).to_csv(output_file_name, index=False)
 
     def generate_similarity_report(self):
-        report_data = []
         """line similarity within dataset"""
-        report_data.extend(self.generate_similarity_within_datasets())
+        self.generate_similarity_within_datasets()
         """line similarity between datasets"""
-        report_data.extend(self.generate_similarity_across_datasets())
-        return pd.DataFrame(report_data)
+        if len(self.get_dataset_names()) >= 2:
+            self.generate_similarity_across_datasets()
 
     def filter_by_similarity_threshold(
-        self, threshold: float, keep_the_files: bool = True
+        self, report_file_path: Path, threshold: float, keep_the_files: bool = True
     ):
-        report_data = self.generate_similarity_report()
+        report_data = pd.read_csv(report_file_path)
         filtered_data = report_data[report_data["Similarity_Score"] >= threshold]
 
         if not keep_the_files:
@@ -176,9 +181,11 @@ class DatasetsReader:
 
 
 if __name__ == "__main__":
+    from line_similarity_checker.config import ROOT_DIR
+
     start_time = time.time()
-    data_sets = DatasetsReader(Path(DOWNLOADS_DIR))
-    report = data_sets.generate_similarity_report()
+    # data_sets = DatasetsReader(Path(DOWNLOADS_DIR))
+    data_sets = DatasetsReader(Path(ROOT_DIR / "LARGE_DATA" / "1000files"))
+    data_sets.generate_similarity_report()
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
-    report.to_csv("report.csv", index=False)
