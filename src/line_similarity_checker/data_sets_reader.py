@@ -103,7 +103,7 @@ class DatasetsReader:
 
         """writing results to csv with dataset name"""
         if filtered_results:
-            pd.DataFrame(results).to_csv(
+            pd.DataFrame(filtered_results).to_csv(
                 destination_dir / f"{dataset_name}.csv", index=False
             )
 
@@ -157,7 +157,7 @@ class DatasetsReader:
                 # Writing results to CSV file
                 if filtered_results:
                     output_file_name = f"{dataset_name}_{text_file}_vs_others.csv"
-                    pd.DataFrame(results).to_csv(
+                    pd.DataFrame(filtered_results).to_csv(
                         destination_dir / output_file_name, index=False
                     )
 
@@ -211,7 +211,7 @@ class DatasetsReader:
 if __name__ == "__main__":
 
     start_time = time.time()
-    data_sets = DatasetsReader(Path(ROOT_DIR / "LARGE_DATA" / "OCR_training_data"))
-    data_sets.generate_similarity_report(Path(ROOT_DIR))
+    data_sets = DatasetsReader(Path(ROOT_DIR / "LARGE_DATA" / "100files_into_2"))
+    data_sets.generate_similarity_report(Path(ROOT_DIR), 0.5)
     end_time = time.time()
     print(f"Time taken: {end_time - start_time} seconds")
