@@ -70,7 +70,9 @@ class DatasetsReader:
             "File_content_2": other_dataset["file_content"],
         }
 
-    def generate_similarity_in_dataset(self, dataset_name: str, destination_dir: Path):
+    def generate_similarity_in_dataset(
+        self, dataset_name: str, destination_dir: Path, threshold: float = 0.7
+    ):
         tasks = []
         dataset = self.Datasets[dataset_name]
         text_files = dataset.text_files
@@ -93,17 +95,30 @@ class DatasetsReader:
         num_processes = multiprocessing.cpu_count()
         with multiprocessing.Pool(num_processes) as pool:
             results = pool.starmap(self.worker_similarity_check, tasks)
-        """writing results to csv with dataset name"""
-        pd.DataFrame(results).to_csv(
-            destination_dir / f"{dataset_name}.csv", index=False
-        )
 
-    def generate_similarity_within_datasets(self, destination_dir: Path):
+        # Filter results to include only those with similarity score above the threshold
+        filtered_results = [
+            result for result in results if result["Similarity_Score"] > threshold
+        ]
+
+        """writing results to csv with dataset name"""
+        if filtered_results:
+            pd.DataFrame(results).to_csv(
+                destination_dir / f"{dataset_name}.csv", index=False
+            )
+
+    def generate_similarity_within_datasets(
+        self, destination_dir: Path, threshold: float = 0.7
+    ):
         dataset_names = list(self.Datasets.keys())
         for dataset_name in dataset_names:
-            self.generate_similarity_in_dataset(dataset_name, destination_dir)
+            self.generate_similarity_in_dataset(
+                dataset_name, destination_dir, threshold
+            )
 
-    def generate_similarity_across_datasets(self, destination_dir: Path):
+    def generate_similarity_across_datasets(
+        self, destination_dir: Path, threshold: float = 0.7
+    ):
         dataset_names = list(self.Datasets.keys())
         for i in range(len(dataset_names)):
             dataset_name = dataset_names[i]
@@ -132,19 +147,26 @@ class DatasetsReader:
                 with multiprocessing.Pool(num_processes) as pool:
                     results.extend(pool.starmap(self.worker_similarity_check, tasks))
 
+                # Filter results to include only those with similarity score above the threshold
+                filtered_results = [
+                    result
+                    for result in results
+                    if result["Similarity_Score"] > threshold
+                ]
+
                 # Writing results to CSV file
-                if results:
+                if filtered_results:
                     output_file_name = f"{dataset_name}_{text_file}_vs_others.csv"
                     pd.DataFrame(results).to_csv(
                         destination_dir / output_file_name, index=False
                     )
 
-    def generate_similarity_report(self, destination_dir: Path):
+    def generate_similarity_report(self, destination_dir: Path, threshold: float = 0.7):
         """line similarity within dataset"""
-        self.generate_similarity_within_datasets(destination_dir)
+        self.generate_similarity_within_datasets(destination_dir, threshold)
         """line similarity between datasets"""
         if len(self.get_dataset_names()) >= 2:
-            self.generate_similarity_across_datasets(destination_dir)
+            self.generate_similarity_across_datasets(destination_dir, threshold)
 
     def filter_by_similarity_threshold(
         self, report_file_path: Path, threshold: float, keep_the_files: bool = True
