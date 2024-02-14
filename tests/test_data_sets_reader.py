@@ -1,10 +1,10 @@
-from config import DATA_DIR
+from config import DATASET1
 
 from line_similarity_checker.data_sets_reader import DatasetsReader
 
 
 def test_datasets_reader():
-    data_sets_reader = DatasetsReader(DATA_DIR)
+    data_sets_reader = DatasetsReader(DATASET1)
     datasets = data_sets_reader.get_dataset_names()
     assert set(datasets) == {"batch 1", "batch 2", "batch 3"}
 
